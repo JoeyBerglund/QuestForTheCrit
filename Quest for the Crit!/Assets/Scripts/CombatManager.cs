@@ -3,52 +3,54 @@ using UnityEngine.UI;
 
 public class CombatManager : MonoBehaviour
 {
-    public Player player; // Your player object
-    public Enemy enemy; // Your enemy object
+    public Player player;
+    public Enemy enemy;
 
-    public Text feedbackText; // UI text for feedback
-    public Image playerHealthBar; // UI health bar for player
-    public Image enemyHealthBar; // UI health bar for enemy
-    public Button basicAttackButton; // Button for basic attack
-    public Button skillAttackButton; // Button for skill attack
-    public Button ultimateAttackButton; // Button for ultimate attack
+    public Text feedbackText;
+    public Image playerHealthBar;
+    public Image enemyHealthBar;
+    public Button basicAttackButton;
+    public Button skillAttackButton;
+    public Button ultimateAttackButton;
+    public Image ultimateButtonImage; // Add this line
 
-    private Animator playerAnimator; // Reference to the Animator
-    private bool canAction = true; // Check if the player can perform an action
+    public TurnManager turnManager;
+
+    private bool playerTurn = true;
 
     void Start()
     {
-        playerAnimator = player.GetComponent<Animator>(); // Get Animator component from player
         basicAttackButton.onClick.AddListener(() => PlayerAttack("Basic"));
         skillAttackButton.onClick.AddListener(() => PlayerAttack("Skill"));
         ultimateAttackButton.onClick.AddListener(() => PlayerAttack("Ultimate"));
 
         UpdateFeedback("Your turn!");
         UpdateHealthBars();
+        UpdateUltimateButtonColor(); // Call this to set the initial color
+
+        // Start Turn Order
+        turnManager.StartTurn();
     }
 
     void PlayerAttack(string attackType)
     {
-        if (!canAction || !player.isAlive) return; // Check if the player can act and is alive
+        if (!playerTurn || !player.isAlive) return;
 
         switch (attackType)
         {
             case "Basic":
                 player.BasicAttack(enemy);
-                playerAnimator.SetTrigger("BasicAttackTrigger"); // Trigger Basic Attack animation
-                UpdateFeedback("You attacked the enemy with Basic Attack!");
+                UpdateFeedback($"You attacked the enemy with Basic Attack!");
                 break;
             case "Skill":
                 player.SkillAttack(enemy);
-                playerAnimator.SetTrigger("SkillAttackTrigger"); // Trigger Skill Attack animation
-                UpdateFeedback("You used a Skill Attack!");
+                UpdateFeedback($"You used a Skill Attack!");
                 break;
             case "Ultimate":
                 if (player.energy >= player.maxEnergy)
                 {
                     player.UltimateAttack(enemy);
-                    playerAnimator.SetTrigger("UltimateAttackTrigger"); // Trigger Ultimate animation
-                    UpdateFeedback("You used your Ultimate!");
+                    UpdateFeedback($"You used your Ultimate!");
                 }
                 else
                 {
@@ -58,8 +60,11 @@ public class CombatManager : MonoBehaviour
                 break;
         }
 
-        canAction = false; // Prevent further actions until the current one is finished
+        // Update visuals
+        player.GainEnergy(20); // Example energy gain after each action
         UpdateHealthBars();
+        UpdateUltimateButtonColor(); // Update the button color after using energy
+        playerTurn = false;
 
         // Delay for enemy turn
         Invoke("EnemyTurn", 1.0f);
@@ -77,7 +82,7 @@ public class CombatManager : MonoBehaviour
         // Check if the player is still alive after the enemy attack
         if (player.isAlive)
         {
-            canAction = true; // Allow the player to act again
+            playerTurn = true;
             UpdateFeedback("Your turn!");
         }
         else
@@ -95,5 +100,11 @@ public class CombatManager : MonoBehaviour
     void UpdateFeedback(string message)
     {
         feedbackText.text = message;
+    }
+
+    void UpdateUltimateButtonColor()
+    {
+        float fillAmount = (float)player.energy / player.maxEnergy;
+        ultimateButtonImage.fillAmount = fillAmount; // Update the fill amount based on player's energy
     }
 }
