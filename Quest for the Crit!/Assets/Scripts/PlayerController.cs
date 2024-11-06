@@ -8,6 +8,8 @@ public class PlayerController : Character
     public int energy = 0;
     public int maxEnergy = 100;
     public int armorClass = 12;
+    public int maxSkillPoints = 5;
+    public int SkillPoints = 5;
     public int initiativeRoll;  // Player's initiative roll
 
     // Override isAlive to reflect player health
@@ -81,7 +83,7 @@ public int UltimateAttack(EnemyController enemy, CombatManager combatManager)
 
         // Roll damage with the crit chance
         int damage = RollDamage(isCrit); // isCrit will be true if the roll was 16 or higher
-        enemy.TakeDamage(damage + 15);  // Extra damage for ultimate
+        enemy.TakeDamage((damage * 2) + 15);  // Extra damage for ultimate
         energy = 0;  // Reset energy after ultimate
         int totalDamage = damage + 15;
         combatManager.UpdateFeedback(totalDamage + " Damage");

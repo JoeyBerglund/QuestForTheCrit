@@ -14,6 +14,7 @@ public class EnemyController : Character
       public int RollInitiative()
     {
         return Random.Range(1, 21);  // Roll a 1d20 and return the result
+        return initiativeRoll;
     }
 
     // Override TakeDamage method for the enemy
