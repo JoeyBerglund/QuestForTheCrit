@@ -385,6 +385,7 @@
 "Assets/Scripts/CombatManager.cs"
 "Assets/Scripts/EnemyController.cs"
 "Assets/Scripts/PlayerController.cs"
+"Assets/Scripts/TargetButtonHover.cs"
 "Assets/Scripts/TurnManager.cs"
 -langversion:9.0
 /deterministic

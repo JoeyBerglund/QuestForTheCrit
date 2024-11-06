@@ -2,10 +2,38 @@ using UnityEngine;
 
 public class TurnManager : MonoBehaviour
 {
-    public void StartTurn()
+    public PlayerController player;
+    public EnemyController enemy;
+
+    private bool playerTurn = true;
+
+    public void RollInitiative()
     {
-        // Manage the order of turns here
-        // For now, the basic implementation just starts with the player's turn
-        Debug.Log("Turn Manager Started");
+        player.initiativeRoll = player.RollInitiative();
+        enemy.initiativeRoll = enemy.RollInitiative();
+
+        if (player.initiativeRoll >= enemy.initiativeRoll)
+        {
+            playerTurn = true;  // Player goes first
+        }
+        else
+        {
+            playerTurn = false;  // Enemy goes first
+        }
+    }
+
+    public bool IsPlayerTurn()
+    {
+        return playerTurn;
+    }
+
+    public void EndPlayerTurn()
+    {
+        playerTurn = false;
+    }
+
+    public void EndEnemyTurn()
+    {
+        playerTurn = true;
     }
 }
