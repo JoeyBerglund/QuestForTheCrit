@@ -36,69 +36,46 @@ public class PlayerController : Character
     }
 
     // Basic attack
-  public int BasicAttack(EnemyController enemy, CombatManager combatManager)
-{
-    int toHitRoll = RollToHit();
-    int damage = 0;
-    if (toHitRoll >= enemy.armorClass) // Hit!
+    public int BasicAttack(EnemyController enemy, CombatManager combatManager)
     {
-        damage = RollDamage(toHitRoll == 20); // Critical hit if it's a 20
-        enemy.TakeDamage(damage);
-        combatManager.UpdateFeedback(damage + " Damage");
-    }
-    else
-    {
-        combatManager.UpdateFeedback("You missed!");
-    }
-    return damage; // Return the damage dealt
-}
-
-public int SkillAttack(EnemyController enemy, CombatManager combatManager)
-{
-    int toHitRoll = RollToHit();
-    int damage = 0;
-    if (toHitRoll >= enemy.armorClass) // Hit!
-    {
-        damage = RollDamage(toHitRoll == 20); // Critical hit if it's a 20
-        damage = damage * 2; // Double damage for skill attack
-        enemy.TakeDamage(damage);
-        combatManager.UpdateFeedback(damage + " Damage");
-    }
-    else
-    {
-        combatManager.UpdateFeedback("You missed!");
-    }
-    return damage; // Return the damage dealt
-}
-
-public int UltimateAttack(EnemyController enemy, CombatManager combatManager)
-{
-    if (energy >= maxEnergy)
-    {
-        // Increase the chance of a critical hit by 20%
         int toHitRoll = RollToHit();
-
-        // If the roll is 16 or higher (20% increased chance for crit)
-        bool isCrit = toHitRoll >= 16;
-
-        // Roll damage with the crit chance
-        int damage = RollDamage(isCrit); // isCrit will be true if the roll was 16 or higher
-        enemy.TakeDamage((damage * 2) + 15);  // Extra damage for ultimate
-        energy = 0;  // Reset energy after ultimate
-        int totalDamage = damage + 15;
-        combatManager.UpdateFeedback(totalDamage + " Damage");
-        return damage + 15; // Return the total damage dealt (including extra from ultimate)
+        int damage = 0;
+        if (toHitRoll >= enemy.armorClass) // Hit!
+        {
+            damage = RollDamage(toHitRoll == 20); // Critical hit if it's a 20
+            enemy.TakeDamage(damage); // Deal damage to the enemy
+            combatManager.UpdateFeedback("Player attacks for " + damage + " damage!");
+        }
+        else
+        {
+            combatManager.UpdateFeedback("Player's attack missed!");
+        }
+        return damage;
     }
-    else
+
+    public int SkillAttack(EnemyController enemy, CombatManager combatManager)
     {
-        combatManager.UpdateFeedback("Not enough energy!");
-        return 0;  // Return 0 if ultimate couldn't be used
+        // Skill attack logic (similar to BasicAttack but may differ in the damage calculation)
+        int damage = BasicAttack(enemy, combatManager);  // Placeholder for skill attack
+        return damage;
     }
-}
 
-
-    // Helper to roll a 1d20 for attack check
-    private int RollToHit()
+    public void UltimateAttack(EnemyController enemy, CombatManager combatManager)
+    {
+        // Ultimate attack logic (does more damage, uses more resources)
+        if (energy >= maxEnergy)
+        {
+            energy = 0; // Reset energy
+            int damage = BasicAttack(enemy, combatManager) * 2; // Example: double damage on ultimate
+            enemy.TakeDamage(damage);
+            combatManager.UpdateFeedback("Player uses Ultimate Attack for " + damage + " damage!");
+        }
+        else
+        {
+            combatManager.UpdateFeedback("Not enough energy for ultimate attack!");
+        }
+    }
+        private int RollToHit()
     {
         return Random.Range(1, 21); // Rolls between 1 and 20
     }
@@ -107,10 +84,10 @@ public int UltimateAttack(EnemyController enemy, CombatManager combatManager)
     private int RollDamage(bool isCrit)
     {
         int damage = Random.Range(1, 13); // Roll 1d12
-        if (isCrit) // If critical hit, roll again and add the result
+        if (isCrit)
         {
-            damage += Random.Range(1, 13); // Roll another 1d12 for crit damage
-            Debug.Log("Critical hit!");
+            damage += Random.Range(1, 13);  // Additional damage for crit
+            Debug.Log("Enemy Critical hit!");
         }
         return damage;
     }

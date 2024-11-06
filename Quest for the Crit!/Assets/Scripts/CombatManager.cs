@@ -4,6 +4,7 @@ using UnityEngine.UI;
 public class CombatManager : MonoBehaviour
 {
     public PlayerController player;  // Reference to PlayerController
+    public EnemyController[] enemies; // Reference to all enemies in the scene
     public EnemyController enemy;    // Reference to EnemyController
 
     // UI elements
@@ -19,6 +20,7 @@ public class CombatManager : MonoBehaviour
 
     private bool playerTurn = true;  // Track whose turn it is
     private bool isCombatOver = false;  // Track if combat is over
+    private GameObject targetedEnemy; // Variable to store the targeted enemy
 
     void Start()
     {
@@ -28,6 +30,7 @@ public class CombatManager : MonoBehaviour
         ultimateAttackButton.onClick.AddListener(() => PlayerAttack("Ultimate"));
 
         // Roll for initiative at the start
+        enemy = FindObjectOfType<EnemyController>();  // Find the enemy in the scene
         enemy.RollInitiative();
         player.RollInitiative();
         InitiativeRoll();
@@ -46,51 +49,85 @@ public class CombatManager : MonoBehaviour
 
     void InitiativeRoll()
     {
-        int playerInitiative = player.RollInitiative();
-        int enemyInitiative = enemy.RollInitiative();
+        if (player == null || enemy == null)
+        {
+            Debug.LogError("Player or Enemy is not assigned in CombatManager.");
+            return;
+        }
+
+        int playerInitiative = player.RollInitiative();  // Player's initiative roll
+        int enemyInitiative = enemy.RollInitiative();    // Enemy's initiative roll
+        
         if (playerInitiative >= enemyInitiative)
         {
-            playerTurn = true;  // Player goes first if they roll higher or ties
-            UpdateTurnOrder("Player goes first!");
+            playerTurn = true;  // Player goes first if they roll higher or tie
+            UpdateTurnOrder("Player goes first! (" + playerInitiative + " vs " + enemyInitiative + ")");
         }
         else
         {
             playerTurn = false;  // Enemy goes first if they roll higher
-            UpdateTurnOrder("Enemy goes first!");
+            UpdateTurnOrder("Enemy goes first! (" + playerInitiative + " vs " + enemyInitiative + ")");
         }
 
         // Delay before starting the first turn
         Invoke("StartTurn", 1.0f);
     }
 
-    void StartTurn()
+    void Update()
     {
-        if (isCombatOver) return;  // If combat is over, do nothing
-        
-        if (playerTurn)
+        // Target an enemy on click (left mouse button)
+        if (Input.GetMouseButtonDown(0) && !isCombatOver)  // Left mouse click
         {
-            // It's the player's turn
-            EnableCombatButtons(true);  // Show combat buttons for the player
-            UpdateTurnOrder("Your turn!");
+            TryTargetEnemy();
         }
-        else
-        {
-            // It's the enemy's turn
-            EnableCombatButtons(false);  // Hide combat buttons for the player
-            UpdateTurnOrder("Enemy's turn!");
+    }
 
-            // Delay for enemy's turn to complete
-            Invoke("EnemyTurn", 1.0f); // Let the enemy attack after a short delay
+    void TryTargetEnemy()
+    {
+        RaycastHit hit;
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);  // Ray from camera to mouse position
+
+        if (Physics.Raycast(ray, out hit))
+        {
+            // Check if we hit an enemy
+            EnemyController enemy = hit.collider.GetComponent<EnemyController>();
+
+            if (enemy != null && enemy.isAlive)
+            {
+                // If the enemy is alive and hit, target it
+                TargetEnemy(enemy.gameObject);
+            }
+        }
+    }
+
+    public void TargetEnemy(GameObject enemyObject)
+    {
+        if (enemyObject != null)
+        {
+            targetedEnemy = enemyObject;
+            UpdateFeedback("Targeted enemy: " + enemyObject.name); // Show feedback on the UI
+            Debug.Log("Targeted: " + enemyObject.name);
         }
     }
 
     void PlayerAttack(string attackType)
     {
+        if (targetedEnemy == null)
+        {
+            UpdateFeedback("No enemy targeted!");
+            return;
+        }
+
         if (!playerTurn || !player.isAlive || isCombatOver) return;
 
-        switch (attackType)
+        // Attack the targeted enemy instead of the default one
+        EnemyController targetedEnemyController = targetedEnemy.GetComponent<EnemyController>();
+
+        if (targetedEnemyController != null)
         {
-            case "Basic":
+            switch (attackType)
+            {
+                case "Basic":
                 player.BasicAttack(enemy, this);
     	        if (player.SkillPoints < player.maxSkillPoints)  // Check if skill points are 0 or less
                 {
@@ -117,33 +154,51 @@ public class CombatManager : MonoBehaviour
                 }
                 player.UltimateAttack(enemy, this);
                 break;
-        }
+            }
 
-        // Check if enemy's health is depleted
-        if (!enemy.isAlive)
-        {
+            // Check if the targeted enemy is dead and handle the end of combat if necessary
+            if (!targetedEnemyController.isAlive)
+            {
+                UpdateHealthBars();
+                EndCombat("You defeated the enemy!");
+                return;
+            }
+
             UpdateHealthBars();
-            EndCombat("You defeated the enemy!");
-            return;
+            UpdateskillPointsText(player.SkillPoints.ToString() + " sp");
+            UpdateUltimateButtonColor();
+            playerTurn = false;
+            StartTurn();
         }
+    }
 
-        // Update energy after attack
-        UpdateHealthBars();
-        UpdateskillPointsText(player.SkillPoints.ToString() + " sp");
-        UpdateUltimateButtonColor();  // Update ultimate button after using energy
-        playerTurn = false;
+    void StartTurn()
+    {
+        if (isCombatOver) return;
 
-        // Transition to enemy's turn
-        StartTurn();
+        if (playerTurn)
+        {
+            EnableCombatButtons(true);
+            UpdateTurnOrder("Your turn!");
+        }
+        else
+        {
+            EnableCombatButtons(false);
+            UpdateTurnOrder("Enemy's turn!");
+
+            // Delay for enemy's turn to complete
+            Invoke("EnemyTurn", 1.0f);  // Let the enemy attack after a short delay
+        }
     }
 
     void EnemyTurn()
     {
-        if (!enemy.isAlive || isCombatOver) return;  // Stop if enemy is dead or combat is over
+        if (targetedEnemy == null || !targetedEnemy.GetComponent<EnemyController>().isAlive || isCombatOver) return;
 
-        enemy.BasicAttack(player, this);
+        // Random attack selection for enemy
+        targetedEnemy.GetComponent<EnemyController>().BasicAttack(player, this);
 
-        // Check if the player’s health is depleted
+        // Check if the player's health is depleted
         if (!player.isAlive)
         {
             EndCombat("You have been defeated!");
@@ -154,10 +209,9 @@ public class CombatManager : MonoBehaviour
         UpdateHealthBars();
 
         playerTurn = true;  // Switch turn to player
-        StartTurn();  // Call StartTurn to update the UI and enable buttons for player
+        StartTurn();
     }
 
-    // Ends the combat and displays a message
     void EndCombat(string message)
     {
         isCombatOver = true;
@@ -166,14 +220,12 @@ public class CombatManager : MonoBehaviour
         UpdateTurnOrder("Combat Over");
     }
 
-    // Update health bars in the UI
     void UpdateHealthBars()
     {
         playerHealthBar.fillAmount = Mathf.Clamp01((float)player.health / 100);
-        enemyHealthBar.fillAmount = Mathf.Clamp01((float)enemy.health / 100);
+        enemyHealthBar.fillAmount = Mathf.Clamp01((float)targetedEnemy.GetComponent<EnemyController>().health / 100);
     }
 
-    // Update feedback text for UI
     public void UpdateFeedback(string message)
     {
         feedbackText.text = message;
@@ -189,24 +241,23 @@ public class CombatManager : MonoBehaviour
         turnManager.text = message;
     }
 
-    // Update the ultimate button color based on energy
     void UpdateUltimateButtonColor()
     {
         float fillAmount = Mathf.Clamp01((float)player.energy / player.maxEnergy);
-        ultimateButtonImage.fillAmount = fillAmount;  // Set fill amount based on player's energy
+        ultimateButtonImage.fillAmount = fillAmount;
     }
 
-    // Show or hide combat buttons
     void EnableCombatButtons(bool enable)
     {
         basicAttackButton.gameObject.SetActive(enable);
         skillAttackButton.gameObject.SetActive(enable);
+        ultimateAttackButton.gameObject.SetActive(enable);
     }
 
-    // Hide all combat buttons
     void DisableCombatButtons(bool disable)
     {
         basicAttackButton.gameObject.SetActive(!disable);
         skillAttackButton.gameObject.SetActive(!disable);
+        ultimateAttackButton.gameObject.SetActive(!disable);
     }
 }

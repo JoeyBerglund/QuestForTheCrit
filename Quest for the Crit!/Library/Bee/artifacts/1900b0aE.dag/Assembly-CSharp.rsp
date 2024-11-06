@@ -384,6 +384,7 @@
 "Assets/Scripts/Character.cs"
 "Assets/Scripts/CombatManager.cs"
 "Assets/Scripts/EnemyController.cs"
+"Assets/Scripts/EnemyTargetable.cs"
 "Assets/Scripts/PlayerController.cs"
 "Assets/Scripts/TurnManager.cs"
 -langversion:9.0
