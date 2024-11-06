@@ -16,12 +16,13 @@ public class CombatManager : MonoBehaviour
     public Button ultimateAttackButton;
     public Image ultimateButtonImage;
     public Text skillPointsText;
+    private Material defaultMaterial; // To store the original material
+    public Material highlightMaterial;
     public Text turnManager;  // Reference to turn manager
 
-    private bool playerTurn = true;  // Track whose turn it is
+    public bool playerTurn = true;  // Track whose turn it is
     private bool isCombatOver = false;  // Track if combat is over
     private GameObject targetedEnemy; // Variable to store the targeted enemy
-
     void Start()
     {
         // Button listeners
@@ -29,20 +30,19 @@ public class CombatManager : MonoBehaviour
         skillAttackButton.onClick.AddListener(() => PlayerAttack("Skill"));
         ultimateAttackButton.onClick.AddListener(() => PlayerAttack("Ultimate"));
 
+       
+        
+        // Initial setup
+        UpdateskillPointsText(player.SkillPoints.ToString() + " sp");
+        UpdateHealthBars();
+        ultimateButtonImage.fillAmount = 0;
+        UpdateUltimateButtonColor();  // Set initial color for ultimate button
+
         // Roll for initiative at the start
         enemy = FindObjectOfType<EnemyController>();  // Find the enemy in the scene
         enemy.RollInitiative();
         player.RollInitiative();
         InitiativeRoll();
-
-        // Initial setup
-        UpdateskillPointsText(player.SkillPoints.ToString() + " sp");
-        UpdateHealthBars();
-        UpdateUltimateButtonColor();  // Set initial color for ultimate button
-
-        // Hide combat buttons initially for enemy's turn
-        DisableCombatButtons(false);
-
         // Start the turn system
         StartTurn();
     }
@@ -55,7 +55,7 @@ public class CombatManager : MonoBehaviour
             return;
         }
 
-        int playerInitiative = player.RollInitiative();  // Player's initiative roll
+        int playerInitiative = 0; // player.RollInitiative();  // Player's initiative roll
         int enemyInitiative = enemy.RollInitiative();    // Enemy's initiative roll
         
         if (playerInitiative >= enemyInitiative)
@@ -75,8 +75,7 @@ public class CombatManager : MonoBehaviour
 
     void Update()
     {
-        // Target an enemy on click (left mouse button)
-        if (Input.GetMouseButtonDown(0) && !isCombatOver)  // Left mouse click
+        if (Input.GetMouseButtonDown(0) && !isCombatOver)  
         {
             TryTargetEnemy();
         }
@@ -85,16 +84,13 @@ public class CombatManager : MonoBehaviour
     void TryTargetEnemy()
     {
         RaycastHit hit;
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);  // Ray from camera to mouse position
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);  
 
         if (Physics.Raycast(ray, out hit))
         {
-            // Check if we hit an enemy
             EnemyController enemy = hit.collider.GetComponent<EnemyController>();
-
             if (enemy != null && enemy.isAlive)
             {
-                // If the enemy is alive and hit, target it
                 TargetEnemy(enemy.gameObject);
             }
         }
@@ -102,11 +98,41 @@ public class CombatManager : MonoBehaviour
 
     public void TargetEnemy(GameObject enemyObject)
     {
-        if (enemyObject != null)
+        if (targetedEnemy != null && targetedEnemy != enemyObject)
         {
-            targetedEnemy = enemyObject;
-            UpdateFeedback("Targeted enemy: " + enemyObject.name); // Show feedback on the UI
-            Debug.Log("Targeted: " + enemyObject.name);
+            // Reset the material of the previous target to its default
+            ResetPreviousTarget();
+        }
+
+        targetedEnemy = enemyObject;
+
+        // Highlight the new target
+        HighlightTarget(targetedEnemy);
+
+        // Update feedback
+        UpdateFeedback("Targeted enemy: " + enemyObject.name); 
+        Debug.Log("Targeted: " + enemyObject.name);
+    }
+
+    void HighlightTarget(GameObject enemyObject)
+    {
+        Renderer enemyRenderer = enemyObject.GetComponent<Renderer>();
+        if (enemyRenderer != null)
+        {
+            defaultMaterial = enemyRenderer.material;  // Store the original material
+            enemyRenderer.material = highlightMaterial; // Change to highlight material
+        }
+    }
+
+    void ResetPreviousTarget()
+    {
+        if (targetedEnemy != null)
+        {
+            Renderer previousRenderer = targetedEnemy.GetComponent<Renderer>();
+            if (previousRenderer != null)
+            {
+                previousRenderer.material = defaultMaterial; // Reset the material back to original
+            }
         }
     }
 
@@ -172,7 +198,7 @@ public class CombatManager : MonoBehaviour
         }
     }
 
-    void StartTurn()
+    public void StartTurn()
     {
         if (isCombatOver) return;
 
@@ -193,10 +219,10 @@ public class CombatManager : MonoBehaviour
 
     void EnemyTurn()
     {
-        if (targetedEnemy == null || !targetedEnemy.GetComponent<EnemyController>().isAlive || isCombatOver) return;
+        if (!enemy.isAlive || isCombatOver) return;
 
-        // Random attack selection for enemy
-        targetedEnemy.GetComponent<EnemyController>().BasicAttack(player, this);
+        // Enemy always targets the player
+        enemy.BasicAttack(player, this);
 
         // Check if the player's health is depleted
         if (!player.isAlive)
@@ -207,12 +233,11 @@ public class CombatManager : MonoBehaviour
 
         // Update health bars for both players
         UpdateHealthBars();
-
-        playerTurn = true;  // Switch turn to player
+        playerTurn = true;
         StartTurn();
     }
 
-    void EndCombat(string message)
+    public void EndCombat(string message)
     {
         isCombatOver = true;
         UpdateFeedback(message);
@@ -251,13 +276,11 @@ public class CombatManager : MonoBehaviour
     {
         basicAttackButton.gameObject.SetActive(enable);
         skillAttackButton.gameObject.SetActive(enable);
-        ultimateAttackButton.gameObject.SetActive(enable);
     }
 
     void DisableCombatButtons(bool disable)
     {
         basicAttackButton.gameObject.SetActive(!disable);
         skillAttackButton.gameObject.SetActive(!disable);
-        ultimateAttackButton.gameObject.SetActive(!disable);
     }
 }

@@ -38531,7 +38531,9 @@ MonoBehaviour:
   ultimateAttackButton: {fileID: 2095166522}
   ultimateButtonImage: {fileID: 2095166523}
   skillPointsText: {fileID: 1302902316}
+  highlightMaterial: {fileID: 2100000, guid: f1bff79a8b3fd144cb09344c3235a113, type: 2}
   turnManager: {fileID: 819500208}
+  playerTurn: 1
 --- !u!1001 &857179130
 PrefabInstance:
   m_ObjectHideFlags: 0

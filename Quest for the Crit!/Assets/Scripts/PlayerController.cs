@@ -60,19 +60,22 @@ public class PlayerController : Character
         return damage;
     }
 
-    public void UltimateAttack(EnemyController enemy, CombatManager combatManager)
+   public void UltimateAttack(EnemyController enemy, CombatManager combatManager)
     {
         // Ultimate attack logic (does more damage, uses more resources)
-        if (energy >= maxEnergy)
+        if (energy >= maxEnergy)  // Check if the player has enough energy for the ultimate attack
         {
-            energy = 0; // Reset energy
-            int damage = BasicAttack(enemy, combatManager) * 2; // Example: double damage on ultimate
-            enemy.TakeDamage(damage);
-            combatManager.UpdateFeedback("Player uses Ultimate Attack for " + damage + " damage!");
+            energy = 0;  // Reset energy after ultimate use
+
+            // Ultimate attack always hits and does double damage + 15 additional damage
+            int damage = Random.Range(5, 11) * 2 + 15;  // Example: double damage from 1d6 + 15 (or adjust as needed)
+            
+            enemy.TakeDamage(damage);  // Deal the damage to the enemy
+            combatManager.UpdateFeedback("Player uses Ultimate Attack for " + damage + " damage!");  // Update feedback
         }
         else
         {
-            combatManager.UpdateFeedback("Not enough energy for ultimate attack!");
+            combatManager.UpdateFeedback("Not enough energy for ultimate attack!");  // Update feedback if not enough energy
         }
     }
         private int RollToHit()

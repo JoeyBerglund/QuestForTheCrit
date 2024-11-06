@@ -32,6 +32,18 @@ public class EnemyController : Character
         {
             combatManager.UpdateFeedback("Enemy's attack missed!");
         }
+
+        // After attack, we check if the player is still alive, and end combat if necessary
+        if (!player.isAlive)
+        {
+            combatManager.EndCombat("You have been defeated!");
+        }
+        else
+        {
+            // If the player is still alive, the turn ends and we switch to the player’s turn
+            combatManager.playerTurn = true; // Ensure that the player's turn is next
+            combatManager.StartTurn();  // Start the player's turn
+        }
     }
 
     public int RollInitiative()
