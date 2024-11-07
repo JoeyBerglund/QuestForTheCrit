@@ -2,96 +2,61 @@ using UnityEngine;
 
 public class PlayerController : Character
 {
-    // Player stats
-    public int health = 100;
-    public int attackPower = 10;
-    public int energy = 0;
-    public int maxEnergy = 100;
-    public int armorClass = 12;
-    public int maxSkillPoints = 5;
-    public int SkillPoints = 5;
-    public int initiativeRoll;  // Player's initiative roll
+    public int hitbonus = 5, health = 100, maxHealth = 100, attackPower = 10, energy = 0, maxEnergy = 100, armorClass = 12, maxSkillPoints = 5, SkillPoints = 5;
 
-    // Override isAlive to reflect player health
     public override bool isAlive => health > 0;
 
-    // Override TakeDamage method for the player
-    public override void TakeDamage(int damage)
-    {
-        health -= damage;
-        if (health < 0) health = 0;
-    }
+    public override void TakeDamage(int damage) => health = Mathf.Max(health - damage, 0);
 
-    // Override GainEnergy for player
-    public override void GainEnergy(int amount)
-    {
-        energy += amount;
-        if (energy > maxEnergy) energy = maxEnergy;
-    }
+    public override void GainEnergy(int amount) => energy = Mathf.Min(energy + amount, maxEnergy);
 
-    // Roll for initiative (1d20)
-    public int RollInitiative()
-    {
-        return Random.Range(1, 21);  // Roll a 1d20 and return the result
-    }
+    public int RollInitiative() => Random.Range(1, 21);
 
-    // Basic attack
     public int BasicAttack(EnemyController enemy, CombatManager combatManager)
     {
         int toHitRoll = RollToHit();
-        int damage = 0;
-        if (toHitRoll >= enemy.armorClass) // Hit!
+        if (toHitRoll >= enemy.armorClass)
         {
-            damage = RollDamage(toHitRoll == 20); // Critical hit if it's a 20
-            enemy.TakeDamage(damage); // Deal damage to the enemy
+            int damage = RollDamage(toHitRoll == 20);
+            enemy.TakeDamage(damage);
             combatManager.UpdateFeedback("Player attacks for " + damage + " damage!");
+            return damage;
         }
-        else
-        {
-            combatManager.UpdateFeedback("Player's attack missed!");
-        }
-        return damage;
+        combatManager.UpdateFeedback("Player's attack missed!");
+        return 0;
     }
 
     public int SkillAttack(EnemyController enemy, CombatManager combatManager)
     {
-        // Skill attack logic (similar to BasicAttack but may differ in the damage calculation)
-        int damage = BasicAttack(enemy, combatManager);  // Placeholder for skill attack
-        return damage;
-    }
-
-   public void UltimateAttack(EnemyController enemy, CombatManager combatManager)
-    {
-        // Ultimate attack logic (does more damage, uses more resources)
-        if (energy >= maxEnergy)  // Check if the player has enough energy for the ultimate attack
+        int toHitRoll = RollToHit();  // Roll to hit for the skill attack
+        if (toHitRoll >= enemy.armorClass)  // Check if it hits
         {
-            energy = 0;  // Reset energy after ultimate use
-
-            // Ultimate attack always hits and does double damage + 15 additional damage
-            int damage = Random.Range(5, 11) * 2 + 15;  // Example: double damage from 1d6 + 15 (or adjust as needed)
-            
-            enemy.TakeDamage(damage);  // Deal the damage to the enemy
-            combatManager.UpdateFeedback("Player uses Ultimate Attack for " + damage + " damage!");  // Update feedback
+            int damage = RollDamage(toHitRoll == 20);  // Roll damage, checking for crit (if toHitRoll == 20)
+            damage *= 2;  // Double the damage for the skill attack
+            enemy.TakeDamage(damage);
+            combatManager.UpdateFeedback("Player uses Skill Attack for " + damage + " damage!");
+            return damage;
         }
         else
         {
-            combatManager.UpdateFeedback("Not enough energy for ultimate attack!");  // Update feedback if not enough energy
+            combatManager.UpdateFeedback("Skill Attack missed!");
+            return 0;  // If the attack misses, return 0
         }
-    }
-        private int RollToHit()
-    {
-        return Random.Range(1, 21); // Rolls between 1 and 20
     }
 
-    // Helper to roll damage (1d12, double damage on crit)
-    private int RollDamage(bool isCrit)
+    public void UltimateAttack(EnemyController enemy, CombatManager combatManager)
     {
-        int damage = Random.Range(1, 13); // Roll 1d12
-        if (isCrit)
+        if (energy >= maxEnergy)
         {
-            damage += Random.Range(1, 13);  // Additional damage for crit
-            Debug.Log("Enemy Critical hit!");
+            int damage = Random.Range(5, 11) * 2 + 15;
+            enemy.TakeDamage(damage);
+            combatManager.UpdateFeedback("Player uses Ultimate Attack for " + damage + " damage!");
+            energy = 0;
         }
-        return damage;
+        else combatManager.UpdateFeedback("Not enough energy for ultimate attack!");
     }
+
+    private int RollToHit() => Random.Range(1, 21) + hitbonus;
+
+    private int RollDamage(bool isCrit) => Random.Range(1, 13) + (isCrit ? Random.Range(1, 13) : 0);
 }

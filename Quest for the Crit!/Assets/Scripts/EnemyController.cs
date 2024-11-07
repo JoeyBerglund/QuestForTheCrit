@@ -1,53 +1,48 @@
 using UnityEngine;
+using UnityEngine.UI;  // For the Image component
 
 public class EnemyController : Character
 {
-    public int health = 100;
-    public int attackPower = 10;
-    public int armorClass = 12;
-    public int initiativeRoll;  // Player's initiative roll
+    public int health = 100, maxHealth = 100, attackPower = 10, armorClass = 12;
+    public Image healthBarImage; // Reference to the health bar image
 
-    // Override isAlive to reflect enemy health
     public override bool isAlive => health > 0;
 
-    // Override TakeDamage method for the enemy
     public override void TakeDamage(int damage)
     {
-        health -= damage;
-        if (health < 0) health = 0;
+        health = Mathf.Max(health - damage, 0);
+        UpdateHealthBar();
+    }
+
+    public void SetHealthBar(Image healthBar) 
+    {
+        healthBarImage = healthBar;
+        UpdateHealthBar(); // Update health bar initially when assigned
+    }
+
+    // Update the health bar to reflect the current health
+    public void UpdateHealthBar()
+    {
+        if (healthBarImage != null)
+        {
+            healthBarImage.fillAmount = Mathf.Clamp01((float)health / maxHealth);
+        }
     }
 
     public void BasicAttack(PlayerController player, CombatManager combatManager)
     {
-        int toHitRoll = Random.Range(1, 21);  // Roll to hit (1d20)
-        int damage = 0;
-
-        if (toHitRoll >= player.armorClass)  // Hit!
+        int toHitRoll = Random.Range(1, 21);
+        if (toHitRoll >= player.armorClass)
         {
-            damage = Random.Range(1, 11);  // Random damage from 1 to 10
-            player.TakeDamage(damage);     // Deal damage to the player
+            int damage = Random.Range(1, 11);
+            player.TakeDamage(damage);
             combatManager.UpdateFeedback("Enemy attacks for " + damage + " damage!");
         }
         else
         {
             combatManager.UpdateFeedback("Enemy's attack missed!");
         }
-
-        // After attack, we check if the player is still alive, and end combat if necessary
-        if (!player.isAlive)
-        {
-            combatManager.EndCombat("You have been defeated!");
-        }
-        else
-        {
-            // If the player is still alive, the turn ends and we switch to the player’s turn
-            combatManager.playerTurn = true; // Ensure that the player's turn is next
-            combatManager.StartTurn();  // Start the player's turn
-        }
     }
 
-    public int RollInitiative()
-    {
-        return Random.Range(1, 21);  // Roll for initiative (1d20)
-    }
+    public int RollInitiative() => Random.Range(1, 21);
 }
