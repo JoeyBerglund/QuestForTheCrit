@@ -5,10 +5,10 @@ using System.Collections.Generic;
 public class CombatManager : MonoBehaviour
 {
     public PlayerController player;
-    public EnemyController[] enemyPrefabs;  // Array of enemy prefabs to choose from
-    public GameObject healthBarPrefab;      // Health bar prefab (Image type)
-    public List<EnemyController> activeEnemies = new List<EnemyController>(); // List of active enemies
-    public List<GameObject> activeHealthBars = new List<GameObject>(); // List of health bar instances
+    public EnemyController[] enemyPrefabs;
+    public GameObject healthBarPrefab;
+    public Canvas healthBarCanvas; // Add the health bar canvas here
+    public List<EnemyController> activeEnemies = new List<EnemyController>();
     public Text feedbackText, skillPointsText, turnManagerText;
     public Image playerHealthBar, ultimateButtonImage;
     public Button basicAttackButton, skillAttackButton, ultimateAttackButton;
@@ -18,61 +18,57 @@ public class CombatManager : MonoBehaviour
     private bool isCombatOver = false;
     private GameObject targetedEnemy;
     private GameObject activeTargetCircle;
+    private int currentEnemyIndex = 0;
 
     void Start()
     {
-        // Button listeners for clicks
         basicAttackButton.onClick.AddListener(() => PlayerAttack("Basic"));
         skillAttackButton.onClick.AddListener(() => PlayerAttack("Skill"));
         ultimateAttackButton.onClick.AddListener(() => PlayerAttack("Ultimate"));
 
-        // Initial setup
         UpdateSkillPointsText();
         UpdateHealthBars();
         UpdateUltimateButtonFill();
 
-        // Roll initiative and spawn enemies
         RollInitiative();
         SpawnRandomEnemies();
     }
 
-    // Function to spawn 3 random enemies at random positions
     void SpawnRandomEnemies()
     {
-        // Starting position for the first enemy
-        Vector3 startPosition = new Vector3(-20.48f, 1f, -28.02f);
+        Vector3 centralPosition = new Vector3(-20.48f, 0, -28.02f);
+        float xOffset = 0.6f;
+        Vector3[] spawnPositions = { centralPosition + new Vector3(0, 0, -xOffset), centralPosition, centralPosition + new Vector3(0, 0, xOffset) };
 
-        // Offset values to space enemies out (e.g., spacing 5 units apart)
-        float xOffset = 5f;
-        float zOffset = 5f;
-
-        for (int i = 0; i < 3; i++)
+        foreach (var spawnPosition in spawnPositions)
         {
-            // Calculate the spawn position for each enemy, based on the index
-            Vector3 spawnPosition = startPosition + new Vector3(xOffset * i, 0, zOffset * i);
-
-            // Choose a random enemy prefab
             EnemyController randomEnemyPrefab = enemyPrefabs[Random.Range(0, enemyPrefabs.Length)];
+            Quaternion rotation = Quaternion.Euler(0, 90, 0);
 
-            // Instantiate the enemy at the calculated position
-            EnemyController enemyInstance = Instantiate(randomEnemyPrefab, spawnPosition, Quaternion.identity);
-
-            // Add the newly spawned enemy to the activeEnemies list
+            EnemyController enemyInstance = Instantiate(randomEnemyPrefab, spawnPosition, rotation);
             activeEnemies.Add(enemyInstance);
 
-            // Instantiate and position a health bar above the enemy
-            GameObject healthBar = Instantiate(healthBarPrefab, spawnPosition + new Vector3(0, 1.5f, 0), Quaternion.identity);
-            activeHealthBars.Add(healthBar);
+            // Instantiate health bar as a child of the healthBarCanvas in world space
+            GameObject healthBar = Instantiate(healthBarPrefab, healthBarCanvas.transform);
+            healthBar.transform.position = spawnPosition + new Vector3(0, 1.5f, 0);
 
-            // Assign the health bar to the enemy instance
             enemyInstance.SetHealthBar(healthBar.GetComponent<Image>());
+
+            // Set the canvas in the enemy instance
+            enemyInstance.InitializeHealthBarPosition(healthBarCanvas);
+
+            EnemyTargetable targetable = enemyInstance.GetComponent<EnemyTargetable>();
+            if (targetable != null)
+            {
+                targetable.Initialize(this, enemyInstance);
+            }
         }
     }
 
     void RollInitiative()
     {
         playerTurn = player.RollInitiative() >= activeEnemies[0].RollInitiative();
-        UpdateTurnOrder(playerTurn ? "Player goes first!" : "Enemy goes first!");
+        UpdateTurnOrder(playerTurn ? "Player goes first!" : "Enemies go first!");
         Invoke(nameof(StartTurn), 1.0f);
     }
 
@@ -122,8 +118,11 @@ public class CombatManager : MonoBehaviour
     void PlaceTargetCircle(GameObject enemyObject)
     {
         if (activeTargetCircle != null) Destroy(activeTargetCircle);
-        activeTargetCircle = Instantiate(targetCirclePrefab, enemyObject.transform.position + new Vector3(0.4f, 0.8f, 0), Quaternion.Euler(0, 90, 0));
+        
+        // Instantiate the target circle at the correct position and with a 90-degree rotation around the Y-axis
+        activeTargetCircle = Instantiate(targetCirclePrefab, enemyObject.transform.position + new Vector3(0f, 1.5f, 0), Quaternion.Euler(0, 90, 0));
     }
+
 
     void ClearPreviousTarget()
     {
@@ -153,10 +152,11 @@ public class CombatManager : MonoBehaviour
                         player.SkillPoints--;
                         player.GainEnergy(20);
                     }
-                    else{
+                    else
+                    {
                         UpdateFeedback("Not enough Skill points!");
                         return;
-                    } 
+                    }
                     break;
                 case "Ultimate":
                     if (player.energy >= player.maxEnergy)
@@ -164,7 +164,8 @@ public class CombatManager : MonoBehaviour
                         player.UltimateAttack(targetedEnemyController, this);
                         player.energy = 0;
                     }
-                    else{ 
+                    else
+                    {
                         UpdateFeedback("Not enough energy!");
                         return;
                     }
@@ -194,23 +195,41 @@ public class CombatManager : MonoBehaviour
         else
         {
             EnableCombatButtons(false);
-            UpdateTurnOrder("Enemy's turn!");
+            UpdateTurnOrder("Enemies' turn!");
+            currentEnemyIndex = 0;  // Reset to the first enemy
             Invoke(nameof(EnemyTurn), 1.0f);
         }
     }
 
     void EnemyTurn()
     {
-        if (activeEnemies.Count == 0 || isCombatOver) return;
+        if (isCombatOver || currentEnemyIndex >= activeEnemies.Count) return;
 
-        EnemyController currentEnemy = activeEnemies[0];
-        currentEnemy.BasicAttack(player, this);
+        EnemyController currentEnemy = activeEnemies[currentEnemyIndex];
 
-        if (!player.isAlive) EndCombat("You have been defeated!");
+        if (currentEnemy.isAlive)
+        {
+            currentEnemy.BasicAttack(player, this);
+        }
 
         UpdateHealthBars();
-        playerTurn = true;
-        StartTurn();
+
+        if (!player.isAlive)
+        {
+            EndCombat("You have been defeated!");
+            return;
+        }
+
+        currentEnemyIndex++;
+        if (currentEnemyIndex < activeEnemies.Count)
+        {
+            Invoke(nameof(EnemyTurn), 1.0f);  // Move to the next enemy's turn
+        }
+        else
+        {
+            playerTurn = true;
+            StartTurn();
+        }
     }
 
     public void EndCombat(string message)
@@ -222,11 +241,16 @@ public class CombatManager : MonoBehaviour
         ClearPreviousTarget();
     }
 
+    // Add method to update the player's health bar
     void UpdateHealthBars()
     {
+        // Update the health bar for the player
+        playerHealthBar.fillAmount = Mathf.Clamp01((float)player.health / player.maxHealth);
+
+        // Update the health bars for each enemy
         foreach (var enemy in activeEnemies)
         {
-            enemy.UpdateHealthBar();  // Update health bar for each enemy
+            enemy.UpdateHealthBar();
         }
     }
 

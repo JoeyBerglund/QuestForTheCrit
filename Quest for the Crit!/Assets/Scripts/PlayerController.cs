@@ -10,8 +10,6 @@ public class PlayerController : Character
 
     public override void GainEnergy(int amount) => energy = Mathf.Min(energy + amount, maxEnergy);
 
-    public int RollInitiative() => Random.Range(1, 21);
-
     public int BasicAttack(EnemyController enemy, CombatManager combatManager)
     {
         int toHitRoll = RollToHit();
@@ -59,4 +57,6 @@ public class PlayerController : Character
     private int RollToHit() => Random.Range(1, 21) + hitbonus;
 
     private int RollDamage(bool isCrit) => Random.Range(1, 13) + (isCrit ? Random.Range(1, 13) : 0);
+
+    public int RollInitiative() => Random.Range(1, 21);
 }
