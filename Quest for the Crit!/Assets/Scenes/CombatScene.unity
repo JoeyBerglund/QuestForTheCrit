@@ -38389,8 +38389,8 @@ MonoBehaviour:
   enemyPrefabs:
   - {fileID: 2975282703855057069, guid: c91c3e9ac5419254b84ae48fce6ce510, type: 3}
   healthBarPrefab: {fileID: 1107742149987981929, guid: 2dd1ba19f5c5b9f4ea96edad11ea4428, type: 3}
-  activeEnemies:
-  - {fileID: 2975282703855057069, guid: c91c3e9ac5419254b84ae48fce6ce510, type: 3}
+  healthBarCanvas: {fileID: 1927447193}
+  activeEnemies: []
   feedbackText: {fileID: 212056536}
   skillPointsText: {fileID: 1302902316}
   turnManagerText: {fileID: 819500208}

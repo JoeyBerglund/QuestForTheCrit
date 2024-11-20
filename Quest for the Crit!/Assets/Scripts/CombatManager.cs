@@ -30,8 +30,13 @@ public class CombatManager : MonoBehaviour
         UpdateHealthBars();
         UpdateUltimateButtonFill();
 
-        RollInitiative();
-        SpawnRandomEnemies();
+        // Ensure that enemies are spawned at the start of the game
+        if (activeEnemies.Count == 0)
+        {
+            SpawnRandomEnemies();  // Call this if there are no enemies in the list
+        }
+
+        RollInitiative();  // Roll initiative after spawning enemies
     }
 
     void SpawnRandomEnemies()
@@ -45,18 +50,30 @@ public class CombatManager : MonoBehaviour
             EnemyController randomEnemyPrefab = enemyPrefabs[Random.Range(0, enemyPrefabs.Length)];
             Quaternion rotation = Quaternion.Euler(0, 90, 0);
 
+            // Instantiate the enemy
             EnemyController enemyInstance = Instantiate(randomEnemyPrefab, spawnPosition, rotation);
             activeEnemies.Add(enemyInstance);
 
-            // Instantiate health bar as a child of the healthBarCanvas in world space
+            // Instantiate the health bar
             GameObject healthBar = Instantiate(healthBarPrefab, healthBarCanvas.transform);
             healthBar.transform.position = spawnPosition + new Vector3(0, 1.5f, 0);
 
-            enemyInstance.SetHealthBar(healthBar.GetComponent<Image>());
+            // Locate healthbarfill in the prefab hierarchy
+            Transform healthBarFillTransform = healthBar.transform.Find("HealthBarBackground/HealthBarfill");
+            if (healthBarFillTransform != null)
+            {
+                Image healthBarFillImage = healthBarFillTransform.GetComponent<Image>();
+                enemyInstance.SetHealthBar(healthBarFillImage); // Set the health bar fill image
+            }
+            else
+            {
+                Debug.LogError("Healthbarfill not found in the prefab hierarchy!");
+            }
 
-            // Set the canvas in the enemy instance
+            // Link the health bar canvas for proper positioning
             enemyInstance.InitializeHealthBarPosition(healthBarCanvas);
 
+            // Initialize enemy targetable system
             EnemyTargetable targetable = enemyInstance.GetComponent<EnemyTargetable>();
             if (targetable != null)
             {
@@ -64,6 +81,7 @@ public class CombatManager : MonoBehaviour
             }
         }
     }
+
 
     void RollInitiative()
     {
@@ -75,7 +93,7 @@ public class CombatManager : MonoBehaviour
     void Update()
     {
         if (Input.GetMouseButtonDown(0) && !isCombatOver) TryTargetEnemy();
-        
+
         // Key press detection for attacks
         if (!isCombatOver && playerTurn)
         {
@@ -118,9 +136,9 @@ public class CombatManager : MonoBehaviour
     void PlaceTargetCircle(GameObject enemyObject)
     {
         if (activeTargetCircle != null) Destroy(activeTargetCircle);
-        
+
         // Instantiate the target circle at the correct position and with a 90-degree rotation around the Y-axis
-        activeTargetCircle = Instantiate(targetCirclePrefab, enemyObject.transform.position + new Vector3(0f, 1.5f, 0), Quaternion.Euler(0, 90, 0));
+        activeTargetCircle = Instantiate(targetCirclePrefab, enemyObject.transform.position + new Vector3(0f, 1.8f, 0), Quaternion.Euler(0, 90, 0));
     }
 
 
@@ -130,7 +148,7 @@ public class CombatManager : MonoBehaviour
         targetedEnemy = null;
     }
 
-    void PlayerAttack(string attackType)
+    public void PlayerAttack(string attackType)
     {
         if (targetedEnemy == null || !playerTurn || isCombatOver || !player.isAlive) return;
 
@@ -172,11 +190,21 @@ public class CombatManager : MonoBehaviour
                     break;
             }
 
-            if (!targetedEnemyController.isAlive) EndCombat("You defeated the enemy!");
-
+            // Update health bars and check if the targeted enemy is defeated
             UpdateHealthBars();
+
+            if (!targetedEnemyController.isAlive)
+            {
+                // Enemy is defeated, remove from active enemies
+                activeEnemies.Remove(targetedEnemyController);
+                UpdateFeedback($"You defeated {targetedEnemyController.name}!");
+                CheckCombatEnd(); // Check if all enemies are dead
+            }
+
             UpdateSkillPointsText();
             UpdateUltimateButtonFill();
+
+            // Switch turn
             playerTurn = false;
             StartTurn();
         }
@@ -207,7 +235,8 @@ public class CombatManager : MonoBehaviour
 
         EnemyController currentEnemy = activeEnemies[currentEnemyIndex];
 
-        if (currentEnemy.isAlive)
+        // Only allow the enemy to attack if they are alive
+        if (currentEnemy != null && currentEnemy.isAlive)
         {
             currentEnemy.BasicAttack(player, this);
         }
@@ -230,7 +259,26 @@ public class CombatManager : MonoBehaviour
             playerTurn = true;
             StartTurn();
         }
+
+        // Check if all enemies are dead
+        CheckCombatEnd();
     }
+
+
+    void CheckCombatEnd()
+    {
+        // If all enemies are defeated, end combat
+        bool allEnemiesDefeated = activeEnemies.TrueForAll(enemy => !enemy.isAlive);
+
+        // Remove destroyed enemies from the list
+        activeEnemies.RemoveAll(enemy => enemy == null);  // Clean up null references (destroyed enemies)
+
+        if (activeEnemies.Count == 0)
+        {
+            EndCombat("You have defeated all the enemies!");
+        }
+    }
+
 
     public void EndCombat(string message)
     {
