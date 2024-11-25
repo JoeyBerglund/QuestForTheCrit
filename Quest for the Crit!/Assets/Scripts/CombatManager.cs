@@ -20,6 +20,8 @@ public class CombatManager : MonoBehaviour
     private GameObject activeTargetCircle;
     private int currentEnemyIndex = 0;
 
+    public Animator playerAnimator; // Reference to the player's Animator
+
     void Start()
     {
         basicAttackButton.onClick.AddListener(() => PlayerAttack("Basic"));
@@ -30,6 +32,16 @@ public class CombatManager : MonoBehaviour
         UpdateHealthBars();
         UpdateUltimateButtonFill();
 
+        if (playerAnimator == null)
+        {
+            playerAnimator = GameObject.FindGameObjectWithTag("Player").GetComponent<Animator>();
+            Debug.LogError("Found?");
+        }
+        else
+        {
+            Debug.LogError("Not needed");
+
+        }
         // Ensure that enemies are spawned at the start of the game
         if (activeEnemies.Count == 0)
         {
@@ -159,6 +171,7 @@ public class CombatManager : MonoBehaviour
             switch (attackType)
             {
                 case "Basic":
+                    playerAnimator.SetTrigger("Attack");
                     player.BasicAttack(targetedEnemyController, this);
                     player.SkillPoints = Mathf.Min(player.SkillPoints + 1, player.maxSkillPoints);
                     player.GainEnergy(10);
