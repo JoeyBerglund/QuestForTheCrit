@@ -20,8 +20,6 @@ public class CombatManager : MonoBehaviour
     private GameObject activeTargetCircle;
     private int currentEnemyIndex = 0;
 
-    public Animator playerAnimator; // Reference to the player's Animator
-
     void Start()
     {
         basicAttackButton.onClick.AddListener(() => PlayerAttack("Basic"));
@@ -31,22 +29,7 @@ public class CombatManager : MonoBehaviour
         UpdateSkillPointsText();
         UpdateHealthBars();
         UpdateUltimateButtonFill();
-
-        if (playerAnimator == null)
-        {
-            playerAnimator = GameObject.FindGameObjectWithTag("Player").GetComponent<Animator>();
-            Debug.LogError("Found?");
-        }
-        else
-        {
-            Debug.LogError("Not needed");
-
-        }
-        // Ensure that enemies are spawned at the start of the game
-        if (activeEnemies.Count == 0)
-        {
-            SpawnRandomEnemies();  // Call this if there are no enemies in the list
-        }
+        SpawnRandomEnemies();
 
         RollInitiative();  // Roll initiative after spawning enemies
     }
@@ -160,7 +143,7 @@ public class CombatManager : MonoBehaviour
         targetedEnemy = null;
     }
 
-    public void PlayerAttack(string attackType)
+    void PlayerAttack(string attackType)
     {
         if (targetedEnemy == null || !playerTurn || isCombatOver || !player.isAlive) return;
 
@@ -168,10 +151,13 @@ public class CombatManager : MonoBehaviour
 
         if (targetedEnemyController != null)
         {
+            // Play the attack animation
+            Animator playerAnimator = player.GetComponent<Animator>();
+
             switch (attackType)
             {
                 case "Basic":
-                    playerAnimator.SetTrigger("Attack");
+                    playerAnimator.SetTrigger("BasicAttack"); // Trigger animation
                     player.BasicAttack(targetedEnemyController, this);
                     player.SkillPoints = Mathf.Min(player.SkillPoints + 1, player.maxSkillPoints);
                     player.GainEnergy(10);
@@ -179,6 +165,7 @@ public class CombatManager : MonoBehaviour
                 case "Skill":
                     if (player.SkillPoints > 0)
                     {
+                        playerAnimator.SetTrigger("SkillAttack"); // (Optional) Use different animations for skills
                         player.SkillAttack(targetedEnemyController, this);
                         player.SkillPoints--;
                         player.GainEnergy(20);
@@ -192,6 +179,7 @@ public class CombatManager : MonoBehaviour
                 case "Ultimate":
                     if (player.energy >= player.maxEnergy)
                     {
+                        playerAnimator.SetTrigger("UltimateAttack"); // (Optional) Ultimate animation
                         player.UltimateAttack(targetedEnemyController, this);
                         player.energy = 0;
                     }
@@ -203,27 +191,18 @@ public class CombatManager : MonoBehaviour
                     break;
             }
 
-            // Update health bars and check if the targeted enemy is defeated
+            if (!targetedEnemyController.isAlive) EndCombat("You defeated the enemy!");
+
             UpdateHealthBars();
-
-            if (!targetedEnemyController.isAlive)
-            {
-                // Enemy is defeated, remove from active enemies
-                activeEnemies.Remove(targetedEnemyController);
-                UpdateFeedback($"You defeated {targetedEnemyController.name}!");
-                CheckCombatEnd(); // Check if all enemies are dead
-            }
-
             UpdateSkillPointsText();
             UpdateUltimateButtonFill();
-
-            // Switch turn
             playerTurn = false;
             StartTurn();
         }
 
         ClearPreviousTarget();
     }
+
 
     public void StartTurn()
     {
@@ -252,6 +231,7 @@ public class CombatManager : MonoBehaviour
         if (currentEnemy != null && currentEnemy.isAlive)
         {
             currentEnemy.BasicAttack(player, this);
+
         }
 
         UpdateHealthBars();
