@@ -6,23 +6,46 @@ public class EnemyController : Character
     public int health = 100, maxHealth = 100, attackPower = 10, armorClass = 12;
     private Image healthBarImage; // Reference to the health bar's fill image
     private Canvas healthBarCanvas; // Reference to the health bar canvas
+    private Animator animator; // Reference to the Animator component
 
     // Check if the enemy is alive
     public override bool isAlive => health > 0;
 
+
+    // Awake is called when the script instance is being loaded
+    private void Awake()
+    {
+        // Get the Animator component attached to the GameObject
+        animator = GetComponent<Animator>();
+
+        if (animator == null)
+        {
+            Debug.LogError($"Animator not found on {gameObject.name}");
+        }
+    }
     // This method is called when the enemy takes damage
     public override void TakeDamage(int damage)
     {
-        health = Mathf.Max(health - damage, 0); // Reduce health and clamp to zero
-        UpdateHealthBar(); // Update the health bar after taking damage
+        if (health > 0)
+        {
+            animator.SetTrigger("TakeDamage"); // Play the "TakeDamage" animation
+            health = Mathf.Max(health - damage, 0); // Reduce health and clamp to zero
+            UpdateHealthBar(); // Update the health bar after taking damage
+        }
 
         if (health == 0)
         {
-            // Enemy is dead, destroy it
-            Destroy(gameObject);
+            animator.SetTrigger("Die"); // Play the "Die" animation
+
+            // Destroy the GameObject after the death animation plays
             Destroy(healthBarImage);
+            Destroy(gameObject, 4.0f); // Delay destruction to allow animation to finish
+
+            // No need to call EndCombat here — it should be handled in CombatManager after the enemy's turn
         }
     }
+
+
 
     // Set the health bar fill image and update the health bar
     public void SetHealthBar(Image healthBarFill)
@@ -75,6 +98,8 @@ public class EnemyController : Character
     // Enemy basic attack method (called when the enemy attacks the player)
     public void BasicAttack(PlayerController player, CombatManager combatManager)
     {
+
+        animator.SetTrigger("Attack"); // Play the "Attack" animation
         int toHitRoll = Random.Range(1, 21); // Roll a d20 to determine if the attack hits
         if (toHitRoll >= player.armorClass)
         {

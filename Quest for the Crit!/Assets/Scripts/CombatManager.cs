@@ -191,7 +191,7 @@ public class CombatManager : MonoBehaviour
                     break;
             }
 
-            if (!targetedEnemyController.isAlive) EndCombat("You defeated the enemy!");
+            if (!targetedEnemyController.isAlive) CheckCombatEnd();
 
             UpdateHealthBars();
             UpdateSkillPointsText();
@@ -232,12 +232,20 @@ public class CombatManager : MonoBehaviour
         {
             currentEnemy.BasicAttack(player, this);
 
+            // Trigger the player's damage animation if they are hit
+            Animator playerAnimator = player.GetComponent<Animator>();
+            if (playerAnimator != null)
+            {
+                playerAnimator.SetTrigger("hit"); // Trigger the damage animation
+            }
         }
 
         UpdateHealthBars();
 
         if (!player.isAlive)
         {
+            Animator playerAnimator = player.GetComponent<Animator>();
+            playerAnimator.SetTrigger("Die");
             EndCombat("You have been defeated!");
             return;
         }
@@ -245,7 +253,7 @@ public class CombatManager : MonoBehaviour
         currentEnemyIndex++;
         if (currentEnemyIndex < activeEnemies.Count)
         {
-            Invoke(nameof(EnemyTurn), 1.0f);  // Move to the next enemy's turn
+            Invoke(nameof(EnemyTurn), 2.0f);  // Move to the next enemy's turn
         }
         else
         {
@@ -253,25 +261,22 @@ public class CombatManager : MonoBehaviour
             StartTurn();
         }
 
-        // Check if all enemies are dead
+        // Check if all enemies are dead after every enemy turn
         CheckCombatEnd();
     }
 
-
     void CheckCombatEnd()
     {
-        // If all enemies are defeated, end combat
+        activeEnemies.RemoveAll(enemy => enemy == null);  // Remove any null enemies
+
         bool allEnemiesDefeated = activeEnemies.TrueForAll(enemy => !enemy.isAlive);
 
-        // Remove destroyed enemies from the list
-        activeEnemies.RemoveAll(enemy => enemy == null);  // Clean up null references (destroyed enemies)
-
-        if (activeEnemies.Count == 0)
+        Debug.Log("Active Enemies: " + allEnemiesDefeated);  // Debug to track the number of active enemies
+        if (allEnemiesDefeated)
         {
             EndCombat("You have defeated all the enemies!");
         }
     }
-
 
     public void EndCombat(string message)
     {
