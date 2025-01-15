@@ -223,7 +223,13 @@ public class CombatManager : MonoBehaviour
 
     void EnemyTurn()
     {
-        if (isCombatOver || currentEnemyIndex >= activeEnemies.Count) return;
+        if (isCombatOver || currentEnemyIndex >= activeEnemies.Count)
+        {
+            // If there are no more enemies or combat is over, end the turn
+            playerTurn = true;
+            StartTurn();
+            return;
+        }
 
         EnemyController currentEnemy = activeEnemies[currentEnemyIndex];
 
@@ -238,27 +244,29 @@ public class CombatManager : MonoBehaviour
             {
                 playerAnimator.SetTrigger("hit"); // Trigger the damage animation
             }
-        }
 
-        UpdateHealthBars();
+            UpdateHealthBars();
 
-        if (!player.isAlive)
-        {
-            Animator playerAnimator = player.GetComponent<Animator>();
-            playerAnimator.SetTrigger("Die");
-            EndCombat("You have been defeated!");
-            return;
+            if (!player.isAlive)
+            {
+                playerAnimator.SetTrigger("Die");
+                EndCombat("You have been defeated!");
+                return;
+            }
         }
 
         currentEnemyIndex++;
-        if (currentEnemyIndex < activeEnemies.Count)
-        {
-            Invoke(nameof(EnemyTurn), 2.0f);  // Move to the next enemy's turn
-        }
-        else
+
+        // If all enemies have taken their turn, switch back to the player's turn
+        if (currentEnemyIndex >= activeEnemies.Count)
         {
             playerTurn = true;
             StartTurn();
+        }
+        else
+        {
+            // Continue to the next enemy's turn
+            Invoke(nameof(EnemyTurn), 2.0f);
         }
 
         // Check if all enemies are dead after every enemy turn
