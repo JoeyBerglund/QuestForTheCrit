@@ -384,6 +384,7 @@
 "Assets/ExplosiveLLC/Warrior FREE/Code/WarriorInputSystemController.cs"
 "Assets/ExplosiveLLC/Warrior FREE/Code/WarriorMovementController.cs"
 "Assets/ExplosiveLLC/Warrior FREE/Code/WarriorTiming.cs"
+"Assets/script/diceRollingsystem.cs"
 "Assets/Scripts/Character.cs"
 "Assets/Scripts/CombatManager.cs"
 "Assets/Scripts/EnemyController.cs"
